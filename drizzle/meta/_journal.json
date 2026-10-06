@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1790946593974,
+      "tag": "0000_cheerful_tenebrous",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1791185133685,
+      "tag": "0001_chemical_golden_guardian",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1791280885573,
+      "tag": "0002_pale_randall_flagg",
+      "breakpoints": true
+    }
+  ]
+}

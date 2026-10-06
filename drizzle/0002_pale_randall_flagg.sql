@@ -1,0 +1,1 @@
+ALTER TABLE `rooms` ADD `activity_at` integer DEFAULT 0 NOT NULL;

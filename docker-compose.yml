@@ -1,0 +1,77 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rummiclub-app
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    expose:
+      - "8787"
+    volumes:
+      - rummiclub_db:/app/data
+    networks:
+      - rummy-club
+
+  nginx:
+    image: nginx:1.29-alpine
+    container_name: rummiclub-nginx
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    depends_on:
+      - app
+    environment:
+      DOMAIN: ${DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/http.conf:/etc/nginx/http.conf:ro
+      - ./nginx/https.conf:/etc/nginx/https.conf:ro
+      - ./docker/nginx-entrypoint.sh:/docker-entrypoint.sh:ro
+      - certbot_www:/var/www/certbot:ro
+      - certbot_certs:/etc/letsencrypt:ro
+    entrypoint: ["/bin/sh", "/docker-entrypoint.sh"]
+    networks:
+      - rummy-club
+
+  certbot:
+    image: certbot/certbot:latest
+    container_name: rummiclub-certbot
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    environment:
+      DOMAIN: ${DOMAIN}
+      CERTBOT_EMAIL: ${CERTBOT_EMAIL}
+    volumes:
+      - certbot_www:/var/www/certbot
+      - certbot_certs:/etc/letsencrypt
+      - ./docker/certbot-entrypoint.sh:/certbot-entrypoint.sh:ro
+    entrypoint: ["/bin/sh", "/certbot-entrypoint.sh"]
+    networks:
+      - rummy-club
+
+networks:
+  rummiclub:
+    driver: bridge
+
+volumes:
+  rummiclub_db:
+    name: rummiclub_db
+  certbot_www:
+    name: rummiclub_certbot_www
+  certbot_certs:
+    name: rummiclub_certbot_certs
