@@ -1,7 +1,5 @@
 # Rummy Club — Docker deployment
 
-[English](README-DOCKER.md) | [Русский](README_RU.md)
-
 Rummy Club can be deployed with Docker Compose using an application container, Nginx, and Certbot. The SQLite database and TLS certificates are stored in named Docker volumes.
 
 ## First deployment
@@ -63,4 +61,4 @@ Back up the database volume before destructive maintenance or server migration.
 
 `RUMMY_DB_PATH` can be used to override the SQLite path inside the application container when needed.
 
-For the full project documentation, see [`README.md`](README.md) or [`README_RU.md`](README_RU.md).
+For the full project documentation, see [`README.md`](README.md) or [`README_EN.md`](README_EN.md).

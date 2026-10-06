@@ -49,8 +49,6 @@ make help
 make build
 make start
 make lint
-make test
-make test-smoke
 ```
 
 Локальная SQLite-база создаётся в `data/rummy-club.db`, если не задана переменная `RUMMY_DB_PATH`.
@@ -118,7 +116,6 @@ make down
 - `db/`, `drizzle/` — адаптер базы, схема и миграции;
 - `docker/`, `nginx/`, `Dockerfile`, `docker-compose.yml` — production-развёртывание;
 - `scripts/` — служебные скрипты миграции базы;
-- `tests/` — тесты игры, API, функций и smoke-проверки;
 - `Makefile` — основные команды разработки и Docker.
 
 ## Проверки
@@ -134,7 +131,6 @@ make build
 Дополнительная HTTP smoke-проверка запускается для уже работающего локального сервера:
 
 ```bash
-make test-smoke
 ```
 
 ## Безопасность

@@ -27,7 +27,7 @@ export function moveDraft(d:Draft,selected:number[],target:number|'rack'|'new'):
  if(new Set(selected).size!==selected.length||selected.some(id=>!all.includes(id)))throw Error('Некорректные фишки черновика.');
  if(target==='rack'&&selected.some(id=>!d.baseRack.includes(id)))throw Error('Фишки копии общего стола нельзя забрать в руку.');
  if(typeof target==='number'&&(!Number.isInteger(target)||target<0||target>=d.board.length))throw Error('Комбинация не найдена.');
- let board=d.board.map(r=>r.filter(id=>!selected.includes(id))),rack=d.rack.filter(id=>!selected.includes(id));
+ let board=d.board.map(r=>r.filter(id=>!selected.includes(id)));const rack=d.rack.filter(id=>!selected.includes(id));
  if(target==='rack')rack.push(...selected);else if(target==='new')board.push([...selected]);else board[target].push(...selected);
  if(board.some(r=>r.length>13))throw Error('В комбинации не может быть больше 13 фишек.');
  board=board.filter(r=>r.length).map(r=>meld(r)?.order??r);

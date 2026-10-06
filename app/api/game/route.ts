@@ -32,7 +32,7 @@ export async function POST(req:Request){try{
   const turnSeconds=b.turnSeconds??0;if(typeof turnSeconds!=='number'||![0,30,60,120,180,300].includes(turnSeconds))throw new RoomError('Выберите время хода из списка.');
   const botCount=b.botCount??0;if(!Number.isInteger(botCount)||typeof botCount!=='number'||botCount<0||botCount>3)throw new RoomError('Выберите от 0 до 3 ботов.');
   if(b.replaceLeavers!==undefined&&typeof b.replaceLeavers!=='boolean')throw new RoomError('Некорректная настройка замены игроков.');
-  const randomMode=b.randomMode??'classic';if(typeof randomMode!=='string'||!RANDOM_MODES.includes(randomMode as any))throw new RoomError('Неизвестный режим раздачи.');
+  const randomMode=b.randomMode??'classic';if(typeof randomMode!=='string'||!RANDOM_MODES.some(mode=>mode===randomMode))throw new RoomError('Неизвестный режим раздачи.');
   const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';const c=Array.from(crypto.getRandomValues(new Uint8Array(8)),x=>alphabet[x%alphabet.length]).join('');
   const g=newGame(b.openingRule==='shared'?'shared':'classic');g.turnSeconds=turnSeconds;g.randomMode=randomMode as typeof g.randomMode;g.replaceLeavers=b.replaceLeavers===true;g.chat=[];g.players.push({id,name,rack:[],opened:false,lastSeen:now});for(let i=0;i<botCount;i++)g.players.push(makeBot(g));
   const room={g,version:1,isPublic:b.isPublic===true,activityAt:now,created:now};

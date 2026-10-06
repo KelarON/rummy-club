@@ -1,38 +1,12 @@
-.PHONY: help install dev build start lint test test-smoke docker-build up down restart stop status logs logs-app logs-nginx logs-certbot shell clean
+SHELL := /bin/sh
 
-COMPOSE := docker compose
+.PHONY: help install dev build start lint check ci \
+        up rebuild down stop restart status logs logs-app logs-nginx logs-certbot \
+        shell docker-build
 
-help:
-	@echo "Rummy Club commands:"
-	@echo ""
-	@echo "  Local development:"
-	@echo "    make install       Install dependencies"
-	@echo "    make dev           Start the local development server"
-	@echo "    make build         Build the application locally"
-	@echo "    make start         Start the production build locally"
-	@echo "    make lint          Run ESLint"
-	@echo "    make test          Run automated tests"
-	@echo "    make test-smoke    Run API smoke test against local server"
-	@echo ""
-	@echo "  Docker / production:"
-	@echo "    make up            Start all Docker services"
-	@echo "    make rebuild       Rebuild images and start services"
-	@echo "    make down          Stop and remove containers"
-	@echo "    make restart       Restart all services"
-	@echo "    make status        Show service status"
-	@echo "    make logs          Follow all service logs"
-	@echo "    make logs-app      Follow app logs"
-	@echo "    make logs-nginx    Follow Nginx logs"
-	@echo "    make logs-certbot  Follow Certbot logs"
-	@echo "    make shell         Open a shell in the app container"
-	@echo "    make docker-build  Build the Docker image without starting it"
-	@echo ""
-	@echo "  Data volumes are preserved by make down/restart."
-	@echo "  To remove the database and certificates, use Docker directly:"
-	@echo "    docker compose down -v"
-
+# Local development
 install:
-	npm run install:ci
+	npm ci
 
 dev:
 	npm run dev
@@ -46,48 +20,75 @@ start:
 lint:
 	npm run lint
 
-test:
-	node --test tests/game.test.mjs tests/features.test.mjs tests/api.test.mjs
+# Fast local checks
+check: lint build
+	@echo "Checks passed."
 
-test-smoke:
-	python tests/api-smoke.py $${URL:-http://127.0.0.1:5173}
+# Full CI-equivalent check. Run this before git push.
+ci: install lint build
+	@echo "CI checks passed."
 
-docker-build:
-	$(COMPOSE) build
-
+# Docker
 up:
-	$(COMPOSE) up -d
+	docker compose up -d
 
 rebuild:
-	$(COMPOSE) up -d --build
+	docker compose up -d --build
 
 down:
-	$(COMPOSE) down
+	docker compose down
 
 stop:
-	$(COMPOSE) stop
+	docker compose stop
 
 restart:
-	$(COMPOSE) restart
+	docker compose restart
 
 status:
-	$(COMPOSE) ps
+	docker compose ps
 
 logs:
-	$(COMPOSE) logs -f --tail=100
+	docker compose logs -f
 
 logs-app:
-	$(COMPOSE) logs -f --tail=100 app
+	docker compose logs -f app
 
 logs-nginx:
-	$(COMPOSE) logs -f --tail=100 nginx
+	docker compose logs -f nginx
 
 logs-certbot:
-	$(COMPOSE) logs -f --tail=100 certbot
+	docker compose logs -f certbot
 
 shell:
-	$(COMPOSE) exec app sh
+	docker compose exec app sh
 
-clean:
-	@echo "Refusing to remove Docker volumes automatically."
-	@echo "Use 'docker compose down -v' only if you intentionally want to delete the database and certificates."
+docker-build:
+	docker compose build
+
+help:
+	@echo "Rummy Club development commands:"
+	@echo ""
+	@echo "Local:"
+	@echo "  make install       Install dependencies with npm ci"
+	@echo "  make dev           Start development server"
+	@echo "  make build         Build production application"
+	@echo "  make start         Start production application"
+	@echo "  make lint          Run ESLint"
+	@echo "  make test          Run tests"
+	@echo "  make test-smoke    Run smoke tests"
+	@echo "  make check         Run lint + tests"
+	@echo "  make ci            Run the full CI-equivalent check"
+	@echo ""
+	@echo "Docker:"
+	@echo "  make up            Start containers"
+	@echo "  make rebuild       Rebuild images and start containers"
+	@echo "  make down          Stop and remove containers"
+	@echo "  make stop          Stop containers without removing them"
+	@echo "  make restart       Restart containers"
+	@echo "  make status        Show container status"
+	@echo "  make logs          Follow all container logs"
+	@echo "  make logs-app      Follow application logs"
+	@echo "  make logs-nginx    Follow nginx logs"
+	@echo "  make logs-certbot  Follow certbot logs"
+	@echo "  make shell         Open a shell in the app container"
+	@echo "  make docker-build  Build Docker images"

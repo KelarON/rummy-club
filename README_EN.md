@@ -49,8 +49,6 @@ make help
 make build
 make start
 make lint
-make test
-make test-smoke
 ```
 
 The local SQLite database is created at `data/rummy-club.db` unless `RUMMY_DB_PATH` is set.
@@ -118,7 +116,6 @@ The application does not require player accounts or email addresses. The browser
 - `db/`, `drizzle/` — database adapter, schema, and migrations;
 - `docker/`, `nginx/`, `Dockerfile`, `docker-compose.yml` — production deployment;
 - `scripts/` — database migration utilities;
-- `tests/` — game, API, feature, and smoke tests;
 - `Makefile` — common development and Docker commands.
 
 ## Testing
@@ -134,7 +131,6 @@ make build
 The optional smoke test expects a running local server:
 
 ```bash
-make test-smoke
 ```
 
 ## Security

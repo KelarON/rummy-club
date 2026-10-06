@@ -3,7 +3,7 @@ import {useEffect,useRef,useState} from 'react';
 import {MessageCircle,ChevronDown,Smile,Send,Sticker} from 'lucide-react';
 import {EMOJIS,STICKERS,type ChatMessage} from '../../lib/chat';
 
-type Props={code:string,me:string,messages:ChatMessage[],open:boolean,onOpen:(open:boolean)=>void,onState:(state:any)=>void};
+type Props={code:string,me:string,messages:ChatMessage[],open:boolean,onOpen:(open:boolean)=>void,onState:(state:unknown)=>void};
 export function RoomChat({code,me,messages,open,onOpen,onState}:Props){
  const [text,setText]=useState(''),[picker,setPicker]=useState<'emoji'|'sticker'|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[read,setRead]=useState<string|null>(null);
  const bottom=useRef<HTMLDivElement>(null),input=useRef<HTMLInputElement>(null),pending=useRef<{messageId:string,kind:'text'|'sticker',content:string}|null>(null),sending=useRef(false);
@@ -17,7 +17,7 @@ export function RoomChat({code,me,messages,open,onOpen,onState}:Props){
   const body=pending.current?.kind===kind&&pending.current.content===content?pending.current:{messageId:crypto.randomUUID(),kind,content};pending.current=body;
   try{
    const response=await fetch('/api/game',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'chat',code,...body})});
-   const state=await response.json() as any;if(!response.ok){if(response.status<500)pending.current=null;throw Error(state.error||'Не удалось отправить сообщение.');}
+   const state=await response.json() as {error?:string};if(!response.ok){if(response.status<500)pending.current=null;throw Error(state.error||'Не удалось отправить сообщение.');}
    onState(state);pending.current=null;if(kind==='text')setText('');setPicker(null);
   }catch(e){setError((e as Error).message);}finally{sending.current=false;setBusy(false);}
  }

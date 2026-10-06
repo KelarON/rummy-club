@@ -1,4 +1,5 @@
 import type {Metadata} from 'next';
+import Link from 'next/link';
 
 export const metadata:Metadata={
   title:'Условия использования · Rummy Клуб',
@@ -8,7 +9,7 @@ export const metadata:Metadata={
 export default function TermsPage(){
   return <main className="app">
     <article className="legal-page">
-      <a className="legal-back" href="/">← Вернуться к игре</a>
+      <Link className="legal-back" href="/">← Вернуться к игре</Link>
       <span className="eyebrow">RUMMY CLUB / ПЕРЕРЫВ НА ПАРТИЮ</span>
       <h1>Условия использования</h1>
       <p className="legal-updated">Дата публикации: 6 октября 2026 года</p>
