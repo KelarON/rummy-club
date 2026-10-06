@@ -1,4 +1,6 @@
 import {DatabaseSync} from "node:sqlite";
+import {mkdirSync} from "node:fs";
+import {dirname, isAbsolute, resolve} from "node:path";
 
 type Params = unknown[];
 
@@ -45,7 +47,15 @@ export function cleanupOldRooms(now = Date.now()) {
 
 export function db() {
   if (!instance) {
-    const path = process.env.RUMMY_DB_PATH || "/app/data/rummy-club.db";
+    const configuredPath = process.env.RUMMY_DB_PATH;
+    const path = configuredPath
+      ? (isAbsolute(configuredPath)
+          ? configuredPath
+          : resolve(process.cwd(), configuredPath))
+      : resolve(process.cwd(), "data", "rummy-club.db");
+
+    mkdirSync(dirname(path), {recursive: true});
+
     const database = new DatabaseSync(path);
     database.exec("PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;");
     instance = new SqliteDb(database);
