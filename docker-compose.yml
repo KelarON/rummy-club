@@ -65,7 +65,7 @@ services:
       - rummy-club
 
 networks:
-  rummiclub:
+  rummy-club:
     driver: bridge
 
 volumes:
