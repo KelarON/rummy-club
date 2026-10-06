@@ -74,8 +74,6 @@ help:
 	@echo "  make build         Build production application"
 	@echo "  make start         Start production application"
 	@echo "  make lint          Run ESLint"
-	@echo "  make test          Run tests"
-	@echo "  make test-smoke    Run smoke tests"
 	@echo "  make check         Run lint + tests"
 	@echo "  make ci            Run the full CI-equivalent check"
 	@echo ""

@@ -1,5 +1,5 @@
 'use client';
-import {useEffect,useRef,useState} from 'react';
+import {useEffect,useRef,useState,type PointerEvent} from 'react';
 import Link from 'next/link';
 import {tile,meld,sortRack,type SortMode,type OpeningRule,type RandomMode} from '../lib/game';
 import {RoomChat} from '../components/game/room-chat';
@@ -21,6 +21,9 @@ export default function Home(){
  const [room,setRoom]=useState<Room|null>(null),[name,setName]=useState(''),[code,setCode]=useState(''),[loading,setLoading]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[rules,setRules]=useState(false),[board,setBoard]=useState<number[][]>([]),[rack,setRack]=useState<number[]>([]),[selected,setSelected]=useState<number[]>([]),[online,setOnline]=useState(true),[restoring,setRestoring]=useState(true);
  const [createOpen,setCreateOpen]=useState(false),[turnSeconds,setTurnSeconds]=useState(0),[inviteCode,setInviteCode]=useState(''),[invite,setInvite]=useState<Lobby|null>(null),[clock,setClock]=useState(0);
  const [botCount,setBotCount]=useState(0),[replaceLeavers,setReplaceLeavers]=useState(false),[randomMode,setRandomMode]=useState<RandomMode>('balanced'),[chatOpen,setChatOpen]=useState(false),[sandboxOpen,setSandboxOpen]=useState(false);
+ const [dragging,setDragging]=useState<number[]>([]),[dragTarget,setDragTarget]=useState<string>(''),[dragPos,setDragPos]=useState({x:0,y:0});
+ const dragRef=useRef<{ids:number[];primaryId:number|null;pointerId:number;moved:boolean;target:string;startX:number;startY:number;offsets:{id:number,x:number,y:number}[]}>({ids:[],primaryId:null,pointerId:-1,moved:false,target:'',startX:0,startY:0,offsets:[]});
+ const suppressClick=useRef(false);
  const clockOffset=useRef(0),lastInteraction=useRef(0),pulseAt=useRef(0);
  const [sortMode,setSortMode]=useState<SortMode>('color'),sortRef=useRef<SortMode>('color');
  const [isPublic,setIsPublic]=useState(false),[openingRule,setOpeningRule]=useState<OpeningRule>('shared');
@@ -111,7 +114,76 @@ export default function Home(){
  const me=room?.players.find(p=>p.id===room.me),owner=!!room&&(room.ownerId??room.players.find(p=>!p.bot)?.id)===room.me;
  const changed=!!room&&(JSON.stringify(board)!==JSON.stringify(room.board)||rack.length!==room.rack.length);
  const reset=()=>{if(room){setBoard(room.board.map(x=>[...x]));setRack(sortRack(room.rack,sortRef.current));setSelected([]);setError('');}};
- const choose=(id:number)=>{if(!interactive||loading)return;if(me?.requiresOpening&&!room!.rack.includes(id))return;setSelected(s=>s.includes(id)?s.filter(x=>x!==id):[...s,id]);};
+ const choose=(id:number)=>{if(suppressClick.current){suppressClick.current=false;return;}if(!interactive||loading)return;if(me?.requiresOpening&&!room!.rack.includes(id))return;setSelected(s=>s.includes(id)?s.filter(x=>x!==id):[...s,id]);};
+ const dropTarget=(x:number,y:number)=>{
+  const el=document.elementFromPoint(x,y) as HTMLElement|null;
+  const meldEl=el?.closest<HTMLElement>('[data-meld-index]');
+  if(meldEl)return `meld:${meldEl.dataset.meldIndex}`;
+  if(el?.closest('[data-rack-drop]'))return 'rack';
+  if(el?.closest('[data-table-drop]'))return 'new';
+  return '';
+ };
+ const finishDrag=(cancel=false)=>{
+  const d=dragRef.current;
+  if(!d.ids.length)return;
+  if(d.moved)suppressClick.current=true;
+  if(!cancel&&d.moved&&d.target){
+   const target=d.target==='rack'?'rack':d.target==='new'?'new':Number(d.target.slice(5));
+   if(target==='rack'&&d.ids.some(id=>!room!.rack.includes(id))){setError('Фишки с общего стола нельзя забирать себе.');}
+   else{
+    let rows=board.map(r=>r.filter(id=>!d.ids.includes(id)));
+    const hand=rack.filter(id=>!d.ids.includes(id));
+    if(target==='rack')hand.push(...d.ids);else if(target==='new')rows.push([...d.ids]);else if(Number.isInteger(target)&&target>=0&&target<rows.length)rows[target].push(...d.ids);
+    rows=rows.filter(r=>r.length).map(r=>meld(r)?.order??r);
+    setBoard(rows);setRack(sortRack(hand,sortRef.current));setSelected([]);setError('');
+   }
+  }
+  dragRef.current={ids:[],primaryId:null,pointerId:-1,moved:false,target:'',startX:0,startY:0,offsets:[]};setDragging([]);setDragTarget('');
+ };
+ const beginDrag=(id:number,e:PointerEvent<HTMLButtonElement>)=>{
+  if(!interactive||loading)return;
+  if(selected.length>0&&!selected.includes(id))return;
+  const ids=[...selected];
+  if(!ids.length)ids.push(id);
+  if(me?.requiresOpening&&ids.some(x=>!room!.rack.includes(x)))return;
+  const offsets=ids.map(tileId=>{
+   const el=document.querySelector<HTMLElement>(`[data-tile-id=\"${tileId}\"]`);
+   const rect=el?.getBoundingClientRect();
+   return {id:tileId,x:(rect?.left??e.clientX)-e.clientX,y:(rect?.top??e.clientY)-e.clientY};
+  });
+  dragRef.current={ids,primaryId:id,pointerId:e.pointerId,moved:false,target:'',startX:e.clientX,startY:e.clientY,offsets};
+  setDragPos({x:e.clientX,y:e.clientY});
+  e.currentTarget.setPointerCapture(e.pointerId);
+ };
+ const groupedOffsets=()=>{
+  const d=dragRef.current;
+  const primary=d.primaryId;
+  const primaryOffset=d.offsets.find(item=>item.id===primary);
+  const primaryEl=document.querySelector<HTMLElement>(`[data-tile-id="${primary}"]`);
+  if(!primaryOffset||!primaryEl)return d.offsets;
+  const width=primaryEl.getBoundingClientRect().width;
+  const step=width+5;
+  const others=d.offsets.filter(item=>item.id!==primary);
+  const left=others.filter(item=>item.x<primaryOffset.x).sort((a,b)=>a.x-b.x);
+  const right=others.filter(item=>item.x>primaryOffset.x).sort((a,b)=>a.x-b.x);
+  return [
+   {id:primary,x:primaryOffset.x,y:primaryOffset.y},
+   ...left.map((item,index)=>({id:item.id,x:primaryOffset.x-step*(left.length-index),y:primaryOffset.y})),
+   ...right.map((item,index)=>({id:item.id,x:primaryOffset.x+step*(index+1),y:primaryOffset.y}))
+  ];
+ };
+ const updateDrag=(e:PointerEvent<HTMLButtonElement>)=>{
+  const d=dragRef.current;if(d.pointerId!==e.pointerId)return;
+  if(!d.moved&&Math.hypot(e.clientX-d.startX,e.clientY-d.startY)>5){
+   d.moved=true;
+   d.offsets=groupedOffsets();
+   setDragging([...d.ids]);
+  }
+  if(d.moved)setDragPos({x:e.clientX,y:e.clientY});
+  const target=dropTarget(e.clientX,e.clientY);
+  if(target!==d.target){d.target=target;setDragTarget(target);}
+ };
+ const endDrag=(e:PointerEvent<HTMLButtonElement>)=>{const d=dragRef.current;if(d.pointerId===e.pointerId){try{e.currentTarget.releasePointerCapture(e.pointerId);}catch{}finishDrag(false);}};
  function move(target:number|'rack'|'new'){
   if(!interactive||!selected.length)return;
   if(target==='rack'&&selected.some(id=>!room!.rack.includes(id))){setError('Фишки с общего стола нельзя забирать себе.');return;}
@@ -120,14 +192,15 @@ export default function Home(){
   rows=rows.filter(r=>r.length).map(r=>meld(r)?.order??r);setBoard(rows);setRack(sortRack(hand,sortRef.current));setSelected([]);setError('');
  }
  async function share(){const url=`${location.origin}/?room=${room!.code}`;try{await navigator.clipboard.writeText(url);setNotice('Ссылка скопирована — отправьте коллегам');}catch{setNotice('Скопируйте ссылку из адресной строки');}}
- const renderTile=(id:number,decor=false)=>{const t=tile(id);return <button key={id} type="button" className={`tile color-${t.c} ${selected.includes(id)&&!decor?'selected':''} ${decor?'decor':''} ${!decor&&sandboxOpen?'draft-locked':''} ${!decor&&room?.lastDrawn===id?'newly-drawn':''}`} aria-label={(t.n?`${colors[t.c]} ${t.n}`:'Джокер')+(!decor&&room?.lastDrawn===id?' — новая фишка':'')} aria-pressed={!decor&&selected.includes(id)} onClick={()=>!decor&&choose(id)} disabled={decor||!interactive||loading||(me?.requiresOpening&&!room?.rack.includes(id))}><span>{t.n||'✦'}</span><small>{symbols[t.c]}</small>{!decor&&room?.lastDrawn===id&&<b className="new-tile-badge">новая</b>}</button>;};
+ const renderTile=(id:number,decor=false)=>{const t=tile(id);const isDragging=dragging.includes(id)&&!decor;return <button key={id} data-tile-id={id} type="button" className={`tile color-${t.c} ${selected.includes(id)&&!decor?'selected':''} ${isDragging?'dragging':''} ${decor?'decor':''} ${!decor&&sandboxOpen?'draft-locked':''} ${!decor&&room?.lastDrawn===id?'newly-drawn':''}`} aria-label={(t.n?`${colors[t.c]} ${t.n}`:'Джокер')+(!decor&&room?.lastDrawn===id?' — новая фишка':'')} aria-pressed={!decor&&selected.includes(id)} onClick={()=>!decor&&choose(id)} onPointerDown={e=>!decor&&beginDrag(id,e)} onPointerMove={e=>!decor&&updateDrag(e)} onPointerUp={e=>!decor&&endDrag(e)} onPointerCancel={()=>finishDrag(true)} disabled={decor||!interactive||loading||(me?.requiresOpening&&!room?.rack.includes(id))}><span>{t.n||'✦'}</span><small>{symbols[t.c]}</small>{!decor&&room?.lastDrawn===id&&<b className="new-tile-badge">новая</b>}</button>;};
  const newPoints=board.filter(r=>r.every(t=>room?.rack.includes(t))).reduce((sum,r)=>sum+(meld(r)?.points||0),0);
+ const dragPreview=dragging.length>0&&dragRef.current.offsets.map(({id,x,y})=>{const t=tile(id);const fromRack=room?.rack.includes(id);const overTable=fromRack&&dragRef.current.target!==''&&dragRef.current.target!=='rack';const primary=id===dragRef.current.primaryId;return <button key={id} type="button" className={`tile drag-preview-tile selected ${fromRack?'rack-preview-tile':''} ${fromRack&&overTable?'drag-preview-on-table':''} color-${t.c}`} style={{left:dragPos.x+x,top:dragPos.y+y}} tabIndex={-1} aria-hidden="true"><span>{t.n||'✦'}</span><small>{symbols[t.c]}</small></button>});
  useEffect(()=>{
   type ModelContext={registerTool?: (tool:unknown,options:{signal:AbortSignal})=>unknown};
   const context=(document as Document & {modelContext?:ModelContext}).modelContext;if(!context?.registerTool)return;const controller=new AbortController();
   for(const tool of [{name:'read_rummy_club_table',title:'Состояние партии',description:'Read the current player’s visible game state, excluding opponents’ hidden tiles.',inputSchema:{type:'object',properties:{},additionalProperties:false},annotations:{readOnlyHint:true},execute:()=>{const r=latest.current;return r?{room:r.code,status:r.status,players:r.players,board:r.board,rack:r.rack,turn:r.players[r.turn]?.name}: {status:'not_joined'};}}])try{Promise.resolve(context.registerTool(tool,{signal:controller.signal})).catch(()=>{});}catch{}return()=>controller.abort();
  },[]);
- return <main className="app"><header className="topbar"><Link className="brand" href="/" onClick={e=>{if(room){e.preventDefault();setRules(true);}}}><span className="brandmark">r<span>•</span></span><span>rummy club<small>ПЕРЕРЫВ НА ПАРТИЮ</small></span></Link><div className="top-actions"><span className="quiet"><Coffee size={16}/> Без спешки</span><button className="iconbtn" aria-label="Правила игры" onClick={()=>setRules(true)}><HelpCircle size={21}/></button>{room&&<button className="iconbtn" aria-label="Выйти из лобби" disabled={loading} onClick={()=>{if(confirm('Выйти из лобби? Ваши фишки вернутся в банк.'))void act('leave');}}><LogOut size={20}/></button>}</div></header>
+ return <main className="app">{dragging.length>0&&<div className="drag-preview-layer" aria-hidden="true">{dragPreview}</div>}<header className="topbar"><Link className="brand" href="/" onClick={e=>{if(room){e.preventDefault();setRules(true);}}}><span className="brandmark">r<span>•</span></span><span>rummy club<small>ПЕРЕРЫВ НА ПАРТИЮ</small></span></Link><div className="top-actions"><span className="quiet"><Coffee size={16}/> Без спешки</span><button className="iconbtn" aria-label="Правила игры" onClick={()=>setRules(true)}><HelpCircle size={21}/></button>{room&&<button className="iconbtn" aria-label="Выйти из лобби" disabled={loading} onClick={()=>{if(confirm('Выйти из лобби? Ваши фишки вернутся в банк.'))void act('leave');}}><LogOut size={20}/></button>}</div></header>
  {error&&<div className="message error" role="alert"><span>{error}</span><button onClick={()=>setError('')} aria-label="Закрыть ошибку"><X size={18}/></button></div>}{notice&&<div className="toast" role="status">{notice}</div>}
  {restoring?<div className="loading-screen">Возвращаемся за стол…</div>:!room?<section className="entry home-entry"><div className="entry-table"><span className="eyebrow">ВАШ ОБЩИЙ СТОЛ</span><h1>Коллеги рядом.<br/>Работа подождёт.</h1><p>Собирайте комбинации, перестраивайте стол<br className="desktop"/> и первым избавьтесь от всех фишек.</p><div className="demo-tiles">{[7,8,9].map(id=>renderTile(id,true))}<span className="tile-gap"/>{[24,37,50].map(id=>renderTile(id,true))}</div><div className="entry-foot"><span><Users size={17}/> 2–4 игрока</span><span><Layers size={17}/> 106 фишек</span><span>Время на выбор</span></div></div>{inviteCode?<div className="home-pane invitation"><span className="invite-icon"><Users size={30}/></span><span className="eyebrow">ПРИГЛАШЕНИЕ В ЛОББИ</span><h2>{invite?`За столом у ${invite.host}`:'Вход по приглашению'}</h2><p className="invite-code">Лобби {inviteCode}</p>{invite&&<div className="invite-details"><span>{invite.playerCount}/4 участников{invite.botCount?` · ботов: ${invite.botCount}`:''}</span><span>{timeLabel(invite.turnSeconds??0)}</span><span>{invite.openingRule==='shared'?'Упрощённый старт':'30 очков у каждого'}</span><span>{randomLabels[invite.randomMode??'classic']} раздача</span></div>}{invite?.canJoin?<form onSubmit={e=>{e.preventDefault();void act('join',{code:inviteCode});}}><label htmlFor="invite-name">Ваш ник</label><input id="invite-name" autoFocus maxLength={20} placeholder="Как вас зовут?" autoComplete="nickname" value={name} onChange={e=>setName(e.target.value)}/><button className="primary wide" disabled={loading||!name.trim()} type="submit">Присоединиться к лобби</button></form>:<p className="list-note">{invite?.status==='lobby'?'Все места заняты.':invite?'Партия уже началась.':'Приглашение недоступно. Проверьте ссылку.'}</p>}<button className="textbtn" onClick={()=>goHome()}>Посмотреть другие лобби</button></div>:<div className="home-pane"><span className="eyebrow">СОБИРАЕМСЯ ЗА СТОЛОМ</span><h2>С кем сыграем?</h2><label htmlFor="name">Ваш ник</label><input id="name" maxLength={20} placeholder="Например, Саша" value={name} onChange={e=>setName(e.target.value)} autoComplete="nickname"/><div className="home-actions"><button className="primary" disabled={loading||!name.trim()} onClick={()=>setCreateOpen(true)}><Plus size={18}/> Создать лобби</button><button className="textbtn" onClick={()=>setRules(true)}><HelpCircle size={17}/> Как играть</button></div><section className="lobby-list" aria-labelledby="lobby-list-title"><div className="lobby-list-heading"><div><span className="eyebrow">ПРИСОЕДИНЯЙТЕСЬ</span><h2 id="lobby-list-title">Открытые лобби</h2></div><button className="secondary compact" disabled={lobbiesLoading} onClick={()=>setListRefresh(n=>n+1)}><RotateCcw size={15}/> Обновить</button></div>{lobbiesError?<p role="alert" className="lobby-list-error">{lobbiesError}</p>:lobbiesLoading&&!lobbies.length?<p className="list-note">Загружаем комнаты…</p>:!lobbies.length?<p className="list-note">Пока нет открытых комнат со свободными местами. Создайте лобби и пригласите коллег.</p>:<div className="lobby-list-items">{lobbies.map(lobby=><article className="lobby-list-item" key={lobby.code}><div><strong>{lobby.host}</strong><small>{lobby.botCount?`${lobby.botCount} бот. · `:''}{randomLabels[lobby.randomMode??'classic']} · {timeLabel(lobby.turnSeconds??0)} · {lobby.openingRule==='shared'?'Упрощённый старт':'30 очков у каждого'}</small></div><span className="lobby-seats"><Users size={17}/>{lobby.playerCount}/4</span><button className="primary compact" disabled={loading||!name.trim()} onClick={()=>act('join',{code:lobby.code})}>Войти</button></article>)}</div>}{!name.trim()&&lobbies.length>0&&<p className="list-note">Введите своё имя выше, чтобы присоединиться.</p>}</section><details className="join-by-code"><summary>Есть код лобби?</summary><div className="join-row"><input aria-label="Код лобби" className="code-input" placeholder="ABCD2345" maxLength={8} value={code} onChange={e=>setCode(e.target.value.toUpperCase().replace(/[^A-Z2-9]/g,''))}/><button className="secondary" disabled={loading||!name.trim()||code.length!==8} onClick={()=>act('join')}>Войти</button></div></details></div>}</section>:<div className={`room-layout ${chatOpen?'with-chat':''}`}><div className="room-content">
  <div className="room-bar"><div><span className="eyebrow">КОМНАТА</span><button className="room-code" onClick={share}>{room.code} <Copy size={16}/></button></div><div className="room-meta">{room.startedAt!=null&&<span className="game-duration">Партия <strong>{duration((room.endedAt??clock)-room.startedAt)}</strong></span>}<span className={online?'connection':'connection offline'}>{online?'На связи':'Переподключаемся…'}</span><button className="secondary compact" onClick={share}><LinkIcon size={16}/> Пригласить</button></div></div>
@@ -135,10 +208,10 @@ export default function Home(){
  {room.status==='lobby'?<section className="lobby felt"><div className="lobby-icon"><Coffee size={34}/></div><span className="eyebrow">ВСТРЕЧА БЕЗ ПОВЕСТКИ</span><h1>{room.players.length<2?'Зовите коллег за стол':'Все на месте?'}</h1><p>Отправьте ссылку в ваш рабочий чат.<br/>Для партии нужны от 2 до 4 участников, включая ботов.</p><div className="lobby-rules"><span>{room.isPublic?'Открытое лобби':'По приглашению'}</span><span>{room.openingRule==='shared'?'Упрощённый старт: один выход на всех':'Обычный старт: 30 очков у каждого'}</span><span>Ход: {timeLabel(room.turnSeconds??0)}</span><span>Раздача: {randomLabels[room.randomMode??'classic']}</span><span>Ботов: {room.players.filter(p=>p.bot).length}</span><span>{room.replaceLeavers?'Вышедших заменит бот':'Без замены вышедших'}</span></div><div className="lobby-actions"><button className="secondary" onClick={share}><Copy size={17}/> Скопировать приглашение</button>{owner?<button className="primary" onClick={()=>act('start')} disabled={loading||room.players.length<2}>Начать партию · {room.players.length}/4</button>:<span className="waiting-note">Создатель комнаты начнёт партию</span>}</div><small>Лобби закроется после часа без активности или выхода всех игроков.</small></section>:<>
  <section className="game-table felt"><div className="table-heading"><div><span className="eyebrow">ОБЩИЙ СТОЛ</span><h2>{room.status==='finished'?'Партия завершена':mine?'Ваш ход':`Ходит ${room.players[room.turn].name}`}</h2></div><div className="table-timing">{room.status==='playing'&&<span className={`turn-clock ${remaining!=null&&remaining<10000?'urgent':''}`}>{room.players[room.turn]?.bot?'Бот думает…':remaining==null?'Без времени':`На ход ${duration(remaining)}`}</span>}<div className="pool"><Layers size={22}/><span><strong>{room.poolCount}</strong><small>в банке</small></span></div></div></div>
  {room.status==='finished'&&<div className="winner"><Trophy size={30}/><h2>{room.winner?(room.players.some(p=>p.id===room.winner)?`${room.players.find(p=>p.id===room.winner)!.name} побеждает!`:'Партия завершена'):'Ничья!'}</h2>{owner&&room.players.length>1?<button className="primary" disabled={loading} onClick={()=>act('rematch')}>Ещё одну партию</button>:<p>{room.players.length>1?'Создатель комнаты может начать новую партию.':'Для следующей партии создайте новое лобби.'}</p>}</div>}
- <div className="melds">{board.map((r,i)=><div className={`meld ${meld(r)?'valid':'invalid'}`} key={i}><div className="meld-tiles">{r.map(id=>renderTile(id))}</div>{interactive&&<button className="add-to-set" aria-label={`Добавить выбранные фишки в комбинацию ${i+1}`} disabled={!selected.length||(me?.requiresOpening&&r.some(id=>!room.rack.includes(id)))} onClick={()=>move(i)}><Plus size={17}/></button>}<span className="meld-status">{meld(r)?'✓':'!'}</span></div>)}{!board.length&&<div className="empty-table"><Layers size={34}/><h3>{room.openingUnlocked?'Можно выкладывать без порога 30':'Стол ждёт первого выкладывания'}</h3><p>{room.openingUnlocked?'Соберите любую правильную комбинацию.':'Выложите комбинации минимум на 30 очков.'}<br/>Выберите фишки на подставке и создайте комбинацию.</p></div>}</div>
+ <div className={`melds ${dragTarget==='new'?'drag-over-new':''}`} data-table-drop>{board.map((r,i)=><div className={`meld ${meld(r)?'valid':'invalid'} ${dragTarget===`meld:${i}`?'drag-over':''}`} data-meld-index={i} key={i}><div className="meld-tiles">{r.map(id=>renderTile(id))}</div>{interactive&&<button className="add-to-set" aria-label={`Добавить выбранные фишки в комбинацию ${i+1}`} disabled={!selected.length||(me?.requiresOpening&&r.some(id=>!room.rack.includes(id)))} onClick={()=>move(i)}><Plus size={17}/></button>}<span className="meld-status">{meld(r)?'✓':'!'}</span></div>)}{!board.length&&<div className="empty-table"><Layers size={34}/><h3>{room.openingUnlocked?'Можно выкладывать без порога 30':'Стол ждёт первого выкладывания'}</h3><p>{room.openingUnlocked?'Соберите любую правильную комбинацию.':'Выложите комбинации минимум на 30 очков.'}<br/>Выберите фишки на подставке и создайте комбинацию.</p></div>}</div>
  {interactive&&<div className="table-controls"><button className="new-set" disabled={!selected.length||loading} onClick={()=>move('new')}><Plus size={18}/> Новая комбинация{selected.length>0&&` · ${selected.length}`}</button><span>{selected.length?'Можно добавить в комбинацию кнопкой +':changed?'Изменения увидят все после завершения хода':'Нажимайте на фишки, чтобы выбрать их'}</span></div>}
  </section>
- <section className="rack-panel"><div className="rack-heading"><div><span className="eyebrow">ВАША ПОДСТАВКА</span><h2>{rack.length} фишек <span>{me?.requiresOpening?`Первый выход: ${newPoints} / 30`:'Можно перестраивать стол'}</span></h2></div><div className="sort-actions"><button className="secondary compact" disabled={loading||changed||room.status!=='playing'} onClick={()=>{setSelected([]);setSandboxOpen(true);}}><NotebookPen size={16}/> Черновик</button><button className="textbtn" aria-pressed={sortMode==='color'} onClick={()=>changeSort('color')}><Shuffle size={15}/> По цвету</button><button className="textbtn" aria-pressed={sortMode==='number'} onClick={()=>changeSort('number')}>По числу</button></div></div><div className="rack">{rack.map(id=>renderTile(id))}{interactive&&selected.length>0&&<button className="return-tile" onClick={()=>move('rack')}>Вернуть<br/>на подставку</button>}</div><div className="turn-actions"><p>{sandboxOpen?'Рука заблокирована, пока открыт черновик.':mine?'Составьте группы или ряды от 3 фишек.':room.status==='finished'?'Спасибо за игру. Можно повторить!':'Можно отсортировать фишки, пока ходит коллега.'}</p><div><button className="secondary" disabled={!interactive||!changed||loading} onClick={reset}><RotateCcw size={16}/> Отменить</button><button className="secondary" disabled={!interactive||loading||changed} onClick={()=>act('draw')}>{room.poolCount?'Взять фишку':'Пропустить'}</button><button className="primary" disabled={!interactive||!changed||loading} onClick={()=>act('play',{board})}><Check size={18}/> Завершить ход</button></div></div></section>
+ <section className="rack-panel"><div className="rack-heading"><div><span className="eyebrow">ВАША ПОДСТАВКА</span><h2>{rack.length} фишек <span>{me?.requiresOpening?`Первый выход: ${newPoints} / 30`:'Можно перестраивать стол'}</span></h2></div><div className="sort-actions"><button className="secondary compact" disabled={loading||changed||room.status!=='playing'} onClick={()=>{setSelected([]);setSandboxOpen(true);}}><NotebookPen size={16}/> Черновик</button><button className="textbtn" aria-pressed={sortMode==='color'} onClick={()=>changeSort('color')}><Shuffle size={15}/> По цвету</button><button className="textbtn" aria-pressed={sortMode==='number'} onClick={()=>changeSort('number')}>По числу</button></div></div><div className={`rack ${dragTarget==='rack'?'drag-over':''}`} data-rack-drop>{rack.map(id=>renderTile(id))}{interactive&&selected.length>0&&<button className="return-tile" onClick={()=>move('rack')}>Вернуть<br/>на подставку</button>}</div><div className="turn-actions"><p>{sandboxOpen?'Рука заблокирована, пока открыт черновик.':mine?'Составьте группы или ряды от 3 фишек.':room.status==='finished'?'Спасибо за игру. Можно повторить!':'Можно отсортировать фишки, пока ходит коллега.'}</p><div><button className="secondary" disabled={!interactive||!changed||loading} onClick={reset}><RotateCcw size={16}/> Отменить</button><button className="secondary" disabled={!interactive||loading||changed} onClick={()=>act('draw')}>{room.poolCount?'Взять фишку':'Пропустить'}</button><button className="primary" disabled={!interactive||!changed||loading} onClick={()=>act('play',{board})}><Check size={18}/> Завершить ход</button></div></div></section>
  <div className="activity"><span className="eyebrow">ЗА СТОЛОМ</span><span aria-live="polite">{room.log[0]}</span></div></>}
  </div><RoomChat key={room.code} code={room.code} me={room.me} messages={room.chat??[]} open={chatOpen} onOpen={toggleChat} onState={r=>{if(latest.current?.code!==r.code)return;accept(r);}}/>
  </div>}
