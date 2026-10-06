@@ -128,11 +128,6 @@ make test
 make build
 ```
 
-The optional smoke test expects a running local server:
-
-```bash
-```
-
 ## Security
 
 Please do not report security vulnerabilities through public issues. See [`SECURITY.md`](SECURITY.md) for the reporting policy.
