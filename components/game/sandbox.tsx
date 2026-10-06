@@ -27,7 +27,10 @@ const emptyDrag=():DragState=>({ids:[],primaryId:null,pointerId:-1,moved:false,t
 export function Sandbox({source,sort,yourTurn,onClose}:Props){
  const [draft,setDraft]=useState(()=>{try{return restoreDraft(localStorage.getItem(draftKey(source)),source)??createDraft(source);}catch{return createDraft(source);}});
  const [selected,setSelected]=useState<number[]>([]),[error,setError]=useState(''),[storageError,setStorageError]=useState(false);
- const [dragging,setDragging]=useState<number[]>([]),[dragPos,setDragPos]=useState({x:0,y:0}),[dragTarget,setDragTarget]=useState('');
+ const [dragging,setDragging]=useState<number[]>([]),
+      [dragPos,setDragPos]=useState({x:0,y:0}),
+      [dragTarget,setDragTarget]=useState(''),
+      [dragOffsets,setDragOffsets]=useState<DragTile[]>([]);
  const dragRef=useRef<DragState>(emptyDrag());
  const suppressClick=useRef(false);
  useEffect(()=>{try{localStorage.setItem(draftKey(draft),JSON.stringify(draft));setStorageError(false);}catch{setStorageError(true);}},[draft]);
@@ -71,8 +74,9 @@ export function Sandbox({source,sort,yourTurn,onClose}:Props){
   if(selected.length>0&&!selected.includes(id))return;
   const ids=selected.length?[...selected]:[id];
   const grouped=buildGroupedOffsets(ids,id,e);
-  dragRef.current={ids,primaryId:id,pointerId:e.pointerId,moved:false,target:'',startX:e.clientX,startY:e.clientY,currentX:e.clientX,currentY:e.clientY,offsets:grouped};
-  setDragPos({x:e.clientX,y:e.clientY});
+dragRef.current={ids,primaryId:id,pointerId:e.pointerId,moved:false,target:'',startX:e.clientX,startY:e.clientY,currentX:e.clientX,currentY:e.clientY,offsets:grouped};
+setDragOffsets(grouped);
+setDragPos({x:e.clientX,y:e.clientY});
   e.currentTarget.setPointerCapture(e.pointerId);
  };
  const updateDrag=(e:PointerEvent<HTMLButtonElement>)=>{
@@ -102,9 +106,10 @@ export function Sandbox({source,sort,yourTurn,onClose}:Props){
     setError('');
    }catch(e){setError((e as Error).message);}
   }
-  dragRef.current=emptyDrag();
-  setDragging([]);
-  setDragTarget('');
+dragRef.current=emptyDrag();
+setDragging([]);
+setDragTarget('');
+setDragOffsets([]);
  };
  const endDrag=(e:PointerEvent<HTMLButtonElement>)=>{
   const d=dragRef.current;
@@ -123,17 +128,34 @@ export function Sandbox({source,sort,yourTurn,onClose}:Props){
    className={`tile color-${t.c} ${selected.includes(id)?'selected':''} ${isDragging?'dragging':''}`}
    aria-label={t.n?`${colors[t.c]} ${t.n}`:'Джокер'}
    aria-pressed={selected.includes(id)}
-   onClick={()=>{if(suppressClick.current){suppressClick.current=false;return;}setSelected(s=>s.includes(id)?s.filter(t=>t!==id):[...s,id]);}}
-   onPointerDown={e=>beginDrag(id,e)}
+   onClick={()=>{
+    if(suppressClick.current)return;
+    setSelected(s=>s.includes(id)?s.filter(t=>t!==id):[...s,id]);
+  }}
+   onPointerDown={e=>{
+    suppressClick.current=false;
+    beginDrag(id,e);
+  }}
    onPointerMove={updateDrag}
    onPointerUp={endDrag}
    onPointerCancel={()=>finishDrag(true)}
   ><span>{t.n||'✦'}</span><small>{symbols[t.c]}</small></button>;
  };
- const dragPreview=dragging.length>0&&dragRef.current.offsets.map(({id,x,y})=>{
+const dragPreview=dragging.length>0&&dragOffsets.map(({id,x,y})=>{
   const t=tile(id);
-  return <button key={id} type="button" className={`tile drag-preview-tile selected color-${t.c}`} style={{left:dragPos.x+x,top:dragPos.y+y}} tabIndex={-1} aria-hidden="true"><span>{t.n||'✦'}</span><small>{symbols[t.c]}</small></button>;
- });
+
+  return <button
+    key={id}
+    type="button"
+    className={`tile drag-preview-tile selected color-${t.c}`}
+    style={{left:dragPos.x+x,top:dragPos.y+y}}
+    tabIndex={-1}
+    aria-hidden="true"
+  >
+    <span>{t.n||'✦'}</span>
+    <small>{symbols[t.c]}</small>
+  </button>;
+});
 
  return <Dialog open onOpenChange={value=>{if(!value)onClose();}}><DialogContent className="sandbox-dialog">
   {dragging.length>0&&typeof document!=='undefined'&&createPortal(<div className="drag-preview-layer" aria-hidden="true" style={{position:'fixed',inset:0,zIndex:10000,pointerEvents:'none'}}>{dragPreview}</div>,document.body)}

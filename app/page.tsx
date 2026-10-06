@@ -21,7 +21,7 @@ export default function Home(){
  const [room,setRoom]=useState<Room|null>(null),[name,setName]=useState(''),[code,setCode]=useState(''),[loading,setLoading]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[rules,setRules]=useState(false),[board,setBoard]=useState<number[][]>([]),[rack,setRack]=useState<number[]>([]),[selected,setSelected]=useState<number[]>([]),[online,setOnline]=useState(true),[restoring,setRestoring]=useState(true);
  const [createOpen,setCreateOpen]=useState(false),[turnSeconds,setTurnSeconds]=useState(0),[inviteCode,setInviteCode]=useState(''),[invite,setInvite]=useState<Lobby|null>(null),[clock,setClock]=useState(0);
  const [botCount,setBotCount]=useState(0),[replaceLeavers,setReplaceLeavers]=useState(false),[randomMode,setRandomMode]=useState<RandomMode>('balanced'),[chatOpen,setChatOpen]=useState(false),[sandboxOpen,setSandboxOpen]=useState(false);
- const [dragging,setDragging]=useState<number[]>([]),[dragTarget,setDragTarget]=useState<string>(''),[dragPos,setDragPos]=useState({x:0,y:0});
+ const [dragging,setDragging]=useState<number[]>([]),[dragTarget,setDragTarget]=useState<string>(''),[dragPos,setDragPos]=useState({x:0,y:0}),[dragOffsets,setDragOffsets]=useState<{id:number,x:number,y:number}[]>([]);
  const dragRef=useRef<{ids:number[];primaryId:number|null;pointerId:number;moved:boolean;target:string;startX:number;startY:number;offsets:{id:number,x:number,y:number}[]}>({ids:[],primaryId:null,pointerId:-1,moved:false,target:'',startX:0,startY:0,offsets:[]});
  const suppressClick=useRef(false);
  const clockOffset=useRef(0),lastInteraction=useRef(0),pulseAt=useRef(0);
@@ -114,7 +114,12 @@ export default function Home(){
  const me=room?.players.find(p=>p.id===room.me),owner=!!room&&(room.ownerId??room.players.find(p=>!p.bot)?.id)===room.me;
  const changed=!!room&&(JSON.stringify(board)!==JSON.stringify(room.board)||rack.length!==room.rack.length);
  const reset=()=>{if(room){setBoard(room.board.map(x=>[...x]));setRack(sortRack(room.rack,sortRef.current));setSelected([]);setError('');}};
- const choose=(id:number)=>{if(suppressClick.current){suppressClick.current=false;return;}if(!interactive||loading)return;if(me?.requiresOpening&&!room!.rack.includes(id))return;setSelected(s=>s.includes(id)?s.filter(x=>x!==id):[...s,id]);};
+ const choose=(id:number)=>{
+  if(suppressClick.current)return;
+  if(!interactive||loading)return;
+  if(me?.requiresOpening&&!room!.rack.includes(id))return;
+  setSelected(s=>s.includes(id)?s.filter(x=>x!==id):[...s,id]);
+};
  const dropTarget=(x:number,y:number)=>{
   const el=document.elementFromPoint(x,y) as HTMLElement|null;
   const meldEl=el?.closest<HTMLElement>('[data-meld-index]');
@@ -139,7 +144,7 @@ export default function Home(){
     setBoard(rows);setRack(sortRack(hand,sortRef.current));setSelected([]);setError('');
    }
   }
-  dragRef.current={ids:[],primaryId:null,pointerId:-1,moved:false,target:'',startX:0,startY:0,offsets:[]};setDragging([]);setDragTarget('');
+  dragRef.current={ids:[],primaryId:null,pointerId:-1,moved:false,target:'',startX:0,startY:0,offsets:[]};setDragging([]);setDragTarget('');setDragOffsets([]);
  };
  const beginDrag=(id:number,e:PointerEvent<HTMLButtonElement>)=>{
   if(!interactive||loading)return;
@@ -153,6 +158,7 @@ export default function Home(){
    return {id:tileId,x:(rect?.left??e.clientX)-e.clientX,y:(rect?.top??e.clientY)-e.clientY};
   });
   dragRef.current={ids,primaryId:id,pointerId:e.pointerId,moved:false,target:'',startX:e.clientX,startY:e.clientY,offsets};
+  setDragOffsets(offsets);
   setDragPos({x:e.clientX,y:e.clientY});
   e.currentTarget.setPointerCapture(e.pointerId);
  };
@@ -176,9 +182,11 @@ export default function Home(){
  const updateDrag=(e:PointerEvent<HTMLButtonElement>)=>{
   const d=dragRef.current;if(d.pointerId!==e.pointerId)return;
   if(!d.moved&&Math.hypot(e.clientX-d.startX,e.clientY-d.startY)>5){
-   d.moved=true;
-   d.offsets=groupedOffsets();
-   setDragging([...d.ids]);
+    d.moved=true;
+    const offsets=groupedOffsets();
+    d.offsets=offsets;
+    setDragOffsets(offsets);
+    setDragging([...d.ids]);
   }
   if(d.moved)setDragPos({x:e.clientX,y:e.clientY});
   const target=dropTarget(e.clientX,e.clientY);
@@ -193,9 +201,29 @@ export default function Home(){
   rows=rows.filter(r=>r.length).map(r=>meld(r)?.order??r);setBoard(rows);setRack(sortRack(hand,sortRef.current));setSelected([]);setError('');
  }
  async function share(){const url=`${location.origin}/?room=${room!.code}`;try{await navigator.clipboard.writeText(url);setNotice('Ссылка скопирована — отправьте коллегам');}catch{setNotice('Скопируйте ссылку из адресной строки');}}
- const renderTile=(id:number,decor=false)=>{const t=tile(id);const isDragging=dragging.includes(id)&&!decor;return <button key={id} data-tile-id={id} type="button" className={`tile color-${t.c} ${selected.includes(id)&&!decor?'selected':''} ${isDragging?'dragging':''} ${decor?'decor':''} ${!decor&&sandboxOpen?'draft-locked':''} ${!decor&&room?.lastDrawn===id?'newly-drawn':''}`} aria-label={(t.n?`${colors[t.c]} ${t.n}`:'Джокер')+(!decor&&room?.lastDrawn===id?' — новая фишка':'')} aria-pressed={!decor&&selected.includes(id)} onClick={()=>!decor&&choose(id)} onPointerDown={e=>!decor&&beginDrag(id,e)} onPointerMove={e=>!decor&&updateDrag(e)} onPointerUp={e=>!decor&&endDrag(e)} onPointerCancel={()=>finishDrag(true)} disabled={decor||!interactive||loading||(me?.requiresOpening&&!room?.rack.includes(id))}><span>{t.n||'✦'}</span><small>{symbols[t.c]}</small>{!decor&&room?.lastDrawn===id&&<b className="new-tile-badge">новая</b>}</button>;};
+ const renderTile=(id:number,decor=false)=>{const t=tile(id);const isDragging=dragging.includes(id)&&!decor;return <button key={id} data-tile-id={id} type="button" className={`tile color-${t.c} ${selected.includes(id)&&!decor?'selected':''} ${isDragging?'dragging':''} ${decor?'decor':''} ${!decor&&sandboxOpen?'draft-locked':''} ${!decor&&room?.lastDrawn===id?'newly-drawn':''}`} aria-label={(t.n?`${colors[t.c]} ${t.n}`:'Джокер')+(!decor&&room?.lastDrawn===id?' — новая фишка':'')} aria-pressed={!decor&&selected.includes(id)} onClick={()=>!decor&&choose(id)} onPointerDown={e=>{
+  if(decor)return;
+  suppressClick.current=false;
+  beginDrag(id,e);
+}} onPointerMove={e=>!decor&&updateDrag(e)} onPointerUp={e=>!decor&&endDrag(e)} onPointerCancel={()=>finishDrag(true)} disabled={decor||!interactive||loading||(me?.requiresOpening&&!room?.rack.includes(id))}><span>{t.n||'✦'}</span><small>{symbols[t.c]}</small>{!decor&&room?.lastDrawn===id&&<b className="new-tile-badge">новая</b>}</button>;};
  const newPoints=board.filter(r=>r.every(t=>room?.rack.includes(t))).reduce((sum,r)=>sum+(meld(r)?.points||0),0);
- const dragPreview=dragging.length>0&&dragRef.current.offsets.map(({id,x,y})=>{const t=tile(id);const fromRack=room?.rack.includes(id);const overTable=fromRack&&dragRef.current.target!==''&&dragRef.current.target!=='rack';const primary=id===dragRef.current.primaryId;return <button key={id} type="button" className={`tile drag-preview-tile selected ${fromRack?'rack-preview-tile':''} ${fromRack&&overTable?'drag-preview-on-table':''} color-${t.c}`} style={{left:dragPos.x+x,top:dragPos.y+y}} tabIndex={-1} aria-hidden="true"><span>{t.n||'✦'}</span><small>{symbols[t.c]}</small></button>});
+ const dragPreview=dragging.length>0&&dragOffsets.map(({id,x,y})=>{
+  const t=tile(id);
+  const fromRack=room?.rack.includes(id);
+  const overTable=fromRack&&dragTarget!==''&&dragTarget!=='rack';
+
+  return <button
+    key={id}
+    type="button"
+    className={`tile drag-preview-tile selected ${fromRack?'rack-preview-tile':''} ${fromRack&&overTable?'drag-preview-on-table':''} color-${t.c}`}
+    style={{left:dragPos.x+x,top:dragPos.y+y}}
+    tabIndex={-1}
+    aria-hidden="true"
+  >
+    <span>{t.n||'✦'}</span>
+    <small>{symbols[t.c]}</small>
+  </button>;
+});
  useEffect(()=>{
   type ModelContext={registerTool?: (tool:unknown,options:{signal:AbortSignal})=>unknown};
   const context=(document as Document & {modelContext?:ModelContext}).modelContext;if(!context?.registerTool)return;const controller=new AbortController();
