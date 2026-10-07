@@ -10,6 +10,8 @@ export async function loadRoom(code:string):Promise<RoomRecord>{
   if(!row)throw new RoomError('Комната не найдена.',404);
   const g=JSON.parse(row.state) as Game,activityAt=row.activity_at||row.created;
   if(advance(g,activityAt)){
+   // advance() may execute a bot turn; persist it atomically below.
+
    const saved=await db().prepare('UPDATE rooms SET state=?,version=version+1 WHERE code=? AND version=?').bind(JSON.stringify(g),code,row.version).run();
    if(!saved.meta.changes)continue;
    row.version++;

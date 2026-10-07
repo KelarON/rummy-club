@@ -24,7 +24,7 @@ export default function Home(){
  const [dragging,setDragging]=useState<number[]>([]),[dragTarget,setDragTarget]=useState<string>(''),[dragPos,setDragPos]=useState({x:0,y:0}),[dragOffsets,setDragOffsets]=useState<{id:number,x:number,y:number}[]>([]);
  const dragRef=useRef<{ids:number[];primaryId:number|null;pointerId:number;moved:boolean;target:string;startX:number;startY:number;offsets:{id:number,x:number,y:number}[]}>({ids:[],primaryId:null,pointerId:-1,moved:false,target:'',startX:0,startY:0,offsets:[]});
  const suppressClick=useRef(false);
- const clockOffset=useRef(0),lastInteraction=useRef(0),pulseAt=useRef(0);
+ const clockOffset=useRef(0);
  const [sortMode,setSortMode]=useState<SortMode>('color'),sortRef=useRef<SortMode>('color');
  const [isPublic,setIsPublic]=useState(false),[openingRule,setOpeningRule]=useState<OpeningRule>('shared');
  const [lobbies,setLobbies]=useState<Lobby[]>([]),[lobbiesError,setLobbiesError]=useState(''),[lobbiesLoading,setLobbiesLoading]=useState(true),[listRefresh,setListRefresh]=useState(0);
@@ -48,26 +48,39 @@ export default function Home(){
   }).catch(()=>setError('Не удалось подключиться. Обновите страницу и попробуйте снова.')).finally(()=>setRestoring(false));
  },[]);
  useEffect(()=>{
-  if(!room)return;let stopped=false,inFlight=false;
-  const tick=async()=>{if(actionBusy.current||inFlight)return;inFlight=true;try{
-   const res=await fetch(`/api/game?room=${room.code}`);const r=await res.json() as ApiRoom;if(stopped)return;
-   if(r.closed||r.join){goHome(r.error||'Вы вышли из комнаты.');return;}
-   if(!res.ok)throw Error(r.error);setOnline(true);accept(r);
-  }catch{if(!stopped)setOnline(false);}finally{inFlight=false;}};
-  const timer=setInterval(tick,1600);return()=>{stopped=true;clearInterval(timer);};
+  if(!room)return;
+  let stopped=false,reconnectTimer:ReturnType<typeof setTimeout>|null=null,socket:WebSocket|null=null,attempt=0;
+  const connect=()=>{
+   if(stopped)return;
+   const protocol=location.protocol==='https:'?'wss:':'ws:';
+   socket=new WebSocket(`${protocol}//${location.host}/api/game/ws?room=${encodeURIComponent(room.code)}`);
+   socket.onopen=()=>{attempt=0;if(!stopped)setOnline(true);};
+   socket.onmessage=event=>{
+    try{
+     const message=JSON.parse(event.data) as {type?:string;error?:string;room?:ApiRoom};
+     if(stopped)return;
+     if(message.type==='state'&&message.room){accept(message.room);setOnline(true);return;}
+     if(message.type==='closed'||message.type==='left'){goHome(message.error||'Вы вышли из комнаты.');return;}
+     if(message.type==='error'&&message.error)setError(message.error);
+    }catch{}
+   };
+   socket.onerror=()=>{if(!stopped)setOnline(false);};
+   socket.onclose=()=>{
+    if(stopped)return;
+    setOnline(false);
+    const delay=Math.min(5000,500*Math.pow(2,attempt++));
+    reconnectTimer=setTimeout(connect,delay);
+   };
+  };
+  connect();
+  return()=>{stopped=true;if(reconnectTimer)clearTimeout(reconnectTimer);socket?.close();};
  },[room?.code]);
  useEffect(()=>{const t=setInterval(()=>setClock(Date.now()+clockOffset.current),1000);return()=>clearInterval(t);},[]);
  useEffect(()=>{
   if(!room)return;const c=room.code;
-  const interact=()=>{lastInteraction.current=Date.now();};
-  const pulse=()=>{
-   if(actionBusy.current||lastInteraction.current<=pulseAt.current)return;
-   pulseAt.current=Date.now();void fetch('/api/game',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'activity',code:c})}).catch(()=>{});
-  };
   const disconnect=(event:PageTransitionEvent)=>{if(!event.persisted)navigator.sendBeacon('/api/game',new Blob([JSON.stringify({action:'disconnect',code:c})],{type:'application/json'}));};
-  window.addEventListener('pointerdown',interact);window.addEventListener('keydown',interact);window.addEventListener('wheel',interact,{passive:true});window.addEventListener('pagehide',disconnect);
-  const timer=setInterval(pulse,15000);
-  return()=>{clearInterval(timer);window.removeEventListener('pointerdown',interact);window.removeEventListener('keydown',interact);window.removeEventListener('wheel',interact);window.removeEventListener('pagehide',disconnect);};
+  window.addEventListener('pagehide',disconnect);
+  return()=>window.removeEventListener('pagehide',disconnect);
  },[room?.code]);
  useEffect(()=>{if(!notice)return;const t=setTimeout(()=>setNotice(''),3500);return()=>clearTimeout(t);},[notice]);
  async function act(action:string,extra:Record<string,unknown>={}){

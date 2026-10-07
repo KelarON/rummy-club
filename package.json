@@ -7,9 +7,9 @@
   },
   "scripts": {
     "install:ci": "npm ci --include=dev --include=optional",
-    "dev": "node scripts/migrate-local.mjs && vinext dev",
+    "dev": "node scripts/dev.mjs",
     "build": "vinext build",
-    "start": "node dist/standalone/server.js",
+    "start": "node scripts/start.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate"
   },

@@ -13,8 +13,12 @@ function reply(room:RoomRecord,id:string,c:string,t?:string){
  return Response.json({...view(room.g,id),code:c,version:room.version,isPublic:room.isPublic,serverNow:Date.now()},{headers:h});
 }
 function failure(e:unknown){return Response.json({error:e instanceof RoomError?e.message:'Не удалось связаться с комнатой. Попробуйте ещё раз.',closed:e instanceof RoomError&&e.status===410},{status:e instanceof RoomError?e.status:503,headers});}
+async function notifyRoom(c:string){
+ try{await fetch(`http://localhost:${process.env.WS_PORT||8788}/internal/notify`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:c})});}catch{}
+}
 export async function GET(req:Request){try{
- const c=roomCode(new URL(req.url).searchParams.get('room')),room=await loadRoom(c),t=token(req),id=t?await identity(t):'';
+ const url=new URL(req.url);
+ const c=roomCode(url.searchParams.get('room')),room=await loadRoom(c),t=token(req),id=t?await identity(t):'';
  const p=room.g.players.find(p=>p.id===id);
  if(!p)return Response.json({join:true,invite:lobbyInfo(c,room)},{headers});
  // Presence alone is not activity and must not keep an abandoned room open forever.
@@ -39,6 +43,15 @@ export async function POST(req:Request){try{
   await db().prepare('INSERT INTO rooms (code,state,version,created,is_public,activity_at) VALUES (?,?,1,?,?,?)').bind(c,JSON.stringify(g),now,room.isPublic?1:0,now).run();return reply(room,id,c,t);
  }
  const c=roomCode(b.code);
+ // Internal server tick: loadRoom() is the single place that advances timers/bots and persists a CAS update.
+ // It is called by the WebSocket process, never by browsers.
+ if(b.action==='tick'){
+  const expected=process.env.RUMMY_INTERNAL_TOKEN;
+  if(!expected||req.headers.get('x-rummy-internal-token')!==expected)throw new RoomError('Недопустимый внутренний запрос.',403);
+  const room=await loadRoom(c);
+  const current=room.g.players[room.g.turn];
+  return Response.json({ok:true,code:c,version:room.version,status:room.g.status,turn:room.g.turn,currentPlayerId:current?.id??null,currentPlayerBot:current?.bot===true,turnStartedAt:room.g.turnStartedAt,serverNow:Date.now()},{headers});
+ }
  // Metadata and leave operations retry on CAS conflict; gameplay never replays a stale turn.
  for(let attempt=0;attempt<4;attempt++){
   const room=await loadRoom(c),g=room.g,p=g.players.find(p=>p.id===id);
@@ -52,12 +65,12 @@ export async function POST(req:Request){try{
     if(!p){if(b.action==='leave')return Response.json({left:true},{headers});throw new RoomError('Вы больше не участник комнаты.',403);}
     if(b.action==='chat'){
      let message;try{message=chatMessage(b,p,g.chat??[],now);}catch(e){throw new RoomError((e as Error).message);}
-     if(message){g.chat=[...(g.chat??[]),message].slice(-80);p.lastSeen=now;p.departureAt=null;await saveRoom(c,room,true);}
+     if(message){g.chat=[...(g.chat??[]),message].slice(-80);p.lastSeen=now;p.departureAt=null;await saveRoom(c,room,true);void notifyRoom(c);}
      return reply(room,id,c);
     }
     if(b.action==='disconnect'){p.departureAt=now+RECONNECT_MS;await saveRoom(c,room);return Response.json({ok:true},{headers});}
     if(b.action==='activity'){p.lastSeen=now;p.departureAt=null;await saveRoom(c,room,true);return Response.json({ok:true},{headers});}
-    if(b.action==='leave'){leave(g,id,now);await saveRoom(c,room,true);return Response.json({left:true},{headers});}
+    if(b.action==='leave'){leave(g,id,now);await saveRoom(c,room,true);void notifyRoom(c);return Response.json({left:true},{headers});}
     if(b.version!==room.version)throw new RoomError('Состояние изменилось. Повторите ход.',409);
     p.lastSeen=now;p.departureAt=null;
     try{
@@ -67,7 +80,7 @@ export async function POST(req:Request){try{
      }else if(b.action==='play')play(g,id,b.board,now);else if(b.action==='draw')draw(g,id,now);else throw Error('Неизвестное действие.');
     }catch(e){throw new RoomError((e as Error).message);}
    }
-   await saveRoom(c,room,true);return reply(room,id,c,oldToken?undefined:t);
+   await saveRoom(c,room,true);void notifyRoom(c);return reply(room,id,c,oldToken?undefined:t);
   }catch(e){if(e instanceof RoomError&&e.status===409&&['join','leave','activity','disconnect','chat'].includes(b.action??'')&&attempt<3)continue;throw e;}
  }
  throw new RoomError('Попробуйте ещё раз.',409);
