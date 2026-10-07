@@ -1,0 +1,158 @@
+.legal-page {
+    max-width: 900px;
+    margin: 45px auto 70px;
+    padding: 38px 44px 50px;
+    background: #1b2b33;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+}
+
+.legal-back {
+    display: inline-block;
+    color: #b8ccc6;
+    font-size: 13px;
+    margin-bottom: 34px;
+}
+
+.legal-page h1 {
+    font-size: 42px;
+    margin: 12px 0 7px;
+}
+
+.legal-updated {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 35px;
+}
+
+.legal-page section {
+    border-top: 1px solid var(--line);
+    padding: 25px 0 3px;
+}
+
+.legal-page h2 {
+    font-size: 21px;
+    margin-bottom: 12px;
+    color: #e6eee8;
+}
+
+.legal-page p,
+.legal-page li {
+    font-size: 14px;
+    line-height: 1.75;
+    color: #b9cac8;
+}
+
+.legal-page p + p {
+    margin-top: 10px;
+}
+
+.legal-page ul {
+    padding-left: 21px;
+    margin: 0;
+}
+
+.legal-page li {
+    margin: 9px 0;
+}
+
+.legal-page strong {
+    color: #e1e9e4;
+    font-weight: 600;
+}
+
+.footer-links {
+    display: flex !important;
+    gap: 16px;
+}
+
+.footer-links a {
+    color: #91a9ad;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+@media (max-width: 760px) {
+    .legal-page {
+        margin: 22px auto 45px;
+        padding: 27px 20px 35px;
+    }
+
+    .legal-page h1 {
+        font-size: 32px;
+    }
+
+    .legal-page section {
+        padding-top: 21px;
+    }
+
+    .footer-links {
+        gap: 10px !important;
+    }
+}
+
+
+.legal-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: #071216d9;
+    backdrop-filter: blur(5px);
+}
+
+.legal-modal {
+    position: relative;
+    width: min(900px, 100%);
+    max-height: 92vh;
+}
+
+.legal-modal-page {
+    max-height: 92vh;
+    overflow: auto;
+    margin: 0;
+}
+
+.legal-modal-page .legal-back {
+    display: none;
+}
+
+.legal-modal-close {
+    position: absolute;
+    z-index: 1;
+    top: 16px;
+    right: 16px;
+    display: grid;
+    width: 36px;
+    height: 36px;
+    place-items: center;
+    border: 1px solid #ffffff20;
+    border-radius: 10px;
+    background: #1b2b33;
+    color: #b8ccc6;
+    cursor: pointer;
+}
+
+.legal-modal-close:hover {
+    color: #e6eee8;
+    border-color: #ffffff35;
+}
+
+@media (max-width: 760px) {
+    .legal-modal-backdrop {
+        align-items: stretch;
+        padding: 10px;
+    }
+
+    .legal-modal,
+    .legal-modal-page {
+        max-height: 100%;
+    }
+
+    .legal-modal-page {
+        padding-top: 27px;
+    }
+}

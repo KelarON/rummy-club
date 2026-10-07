@@ -108,15 +108,20 @@ Room state, including player nicknames and room chat, is stored in the SQLite da
 
 The application does not require player accounts or email addresses. The browser uses a technical player cookie to keep a player associated with their seat.
 
-## Project structure
+## Project Structure
 
-- `app/` — pages, privacy/terms pages, and API routes;
-- `components/` — reusable UI components;
-- `lib/` — game rules, bots, chat, rooms, validation, and utilities;
-- `db/`, `drizzle/` — database adapter, schema, and migrations;
-- `docker/`, `nginx/`, `Dockerfile`, `docker-compose.yml` — production deployment;
-- `scripts/` — database migration utilities;
-- `Makefile` — common development and Docker commands.
+* `app/` — main application: pages, API routes, and feature modules for the game and lobby;
+
+  * `app/game/` — game UI logic, components, hooks, types, and utilities;
+  * `app/lobby/` — lobby interface and game creation/joining flows;
+  * `app/shared/` — shared application components;
+  * `app/styles/` — global and feature-oriented styles;
+* `components/ui/` — reusable base UI components;
+* `lib/` — server-side and domain logic: game rules, bots, chat, rooms, validation, and utilities;
+* `db/`, `drizzle/` — database adapter, schema, and migrations;
+* `docker/`, `nginx/`, `Dockerfile`, `docker-compose.yml` — production deployment;
+* `scripts/` — utility scripts and database migration scripts;
+* `Makefile` — main development and Docker commands.
 
 ## Testing
 
@@ -124,7 +129,6 @@ Run the main automated checks with:
 
 ```bash
 make lint
-make test
 make build
 ```
 

@@ -1,0 +1,312 @@
+@media (min-width: 1500px) {
+    .entry {
+        margin-top: 60px;
+    }
+
+    .entry-table {
+        padding-top: 80px;
+    }
+
+    .entry h1 {
+        font-size: 56px;
+    }
+}
+
+@media (max-width: 1100px) {
+    .app {
+        padding: 0 24px;
+    }
+
+    .entry-table {
+        padding: 45px 30px;
+    }
+
+    .entry-form {
+        padding: 45px 30px;
+    }
+
+    .entry h1 {
+        font-size: 39px;
+    }
+
+    .demo-tiles .entry-foot {
+        gap: 12px;
+        font-size: 11px;
+    }
+
+    .player {
+        padding: 12px;
+        gap: 8px;
+    }
+
+    .turn-pill {
+        display: none;
+    }
+
+    .turn-actions {
+        flex-wrap: wrap;
+    }
+
+    .turn-actions > div {
+        margin-left: auto;
+    }
+
+    .player-name > span {
+        font-size: 10px;
+    }
+}
+
+@media (max-width: 760px) {
+    .app {
+        padding: 0 15px;
+    }
+
+    .topbar {
+        height: 80px;
+    }
+
+    .brand {
+        font-size: 21px;
+    }
+
+    .quiet {
+        display: none;
+    }
+
+    .top-actions {
+        gap: 7px;
+    }
+
+    .entry {
+        grid-template-columns: 1fr;
+        margin: 22px 0;
+    }
+
+    .entry-table {
+        padding: 32px 25px;
+    }
+
+    .entry h1 {
+        font-size: 36px;
+        margin: 19px 0;
+    }
+
+    .entry-table p {
+        font-size: 15px;
+    }
+
+    .demo-tiles {
+        margin: 30px 0;
+    }
+
+    .entry-foot {
+        font-size: 12px;
+        gap: 18px;
+        flex-wrap: wrap;
+    }
+
+    .entry-form {
+        padding: 30px 25px;
+    }
+
+    .entry-form h2 {
+        margin-bottom: 20px;
+        font-size: 28px;
+    }
+
+    .room-meta {
+        gap: 12px;
+    }
+
+    .connection {
+        font-size: 0;
+    }
+
+    .connection:before {
+        margin: 0;
+    }
+
+    .players {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+
+    .player-name > span {
+        font-size: 11px;
+    }
+
+    .player-name strong {
+        font-size: 13px;
+    }
+
+    .player {
+        padding: 10px;
+    }
+
+    .avatar {
+        width: 31px;
+        height: 31px;
+    }
+
+    .empty-player {
+        font-size: 12px;
+    }
+
+    .lobby h1 {
+        font-size: 29px;
+    }
+
+    .lobby {
+        padding: 38px 17px;
+        min-height: 420px;
+    }
+
+    .lobby-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .lobby-actions button {
+        width: 100%;
+        white-space: normal;
+    }
+
+    .game-table {
+        padding: 18px 14px;
+        min-height: 340px;
+    }
+
+    .table-heading {
+        margin-bottom: 18px;
+    }
+
+    .table-heading h2 {
+        font-size: 21px;
+    }
+
+    .melds {
+        gap: 16px 9px;
+    }
+
+    .meld {
+        padding: 6px 7px 9px;
+        gap: 5px;
+    }
+
+    .tile {
+        width: 47px;
+        height: 66px;
+        font-size: 32px;
+    }
+
+    .meld-tiles {
+        gap: 3px;
+    }
+
+    .table-controls {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 9px;
+    }
+
+    .table-controls > span {
+        font-size: 11px;
+    }
+
+    .rack-panel {
+        padding: 17px 14px 0;
+        margin-top: 15px;
+    }
+
+    .rack-heading {
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .rack-heading h2 {
+        font-size: 17px;
+    }
+
+    .rack-heading h2 span {
+        display: block;
+        margin: 5px 0 0;
+        font-size: 11px;
+    }
+
+    .sort-actions {
+        gap: 5px;
+        flex-direction: column;
+    }
+
+    .sort-actions .textbtn {
+        padding: 2px;
+        font-size: 12px;
+    }
+
+    .rack {
+        padding: 24px 6px 18px;
+        gap: 6px;
+    }
+
+    .turn-actions {
+        padding: 16px 0;
+    }
+
+    .turn-actions > div {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .turn-actions .primary {
+        grid-column: 1 / -1;
+    }
+
+    .turn-actions .secondary {
+        font-size: 12px;
+        padding: 10px;
+    }
+
+    .activity {
+        gap: 10px;
+        font-size: 12px;
+        align-items: flex-start;
+    }
+
+    .activity .eyebrow {
+        white-space: nowrap;
+        font-size: 9px;
+    }
+
+    footer > span:nth-child(2) {
+        display: none;
+    }
+
+    .rules-modal {
+        padding: 26px 20px;
+    }
+
+    .rules-modal h2 {
+        font-size: 24px;
+    }
+
+    .winner {
+        padding: 17px;
+        gap: 12px;
+    }
+
+    .winner h2 {
+        font-size: 20px;
+    }
+
+    .winner .primary {
+        width: 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        transition: none !important;
+    }
+}

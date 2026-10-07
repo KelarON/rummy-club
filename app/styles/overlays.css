@@ -1,0 +1,64 @@
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: #071216d9;
+    backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.rules-modal {
+    width: 610px;
+    max-height: 90vh;
+    overflow: auto;
+    background: #1c2e36;
+    border: 1px solid #ffffff20;
+    border-radius: 16px;
+    padding: 32px;
+    position: relative;
+}
+
+.modal-close {
+    position: absolute;
+    right: 14px;
+    top: 14px;
+}
+
+.rules-modal h2 {
+    font-size: 28px;
+    margin: 14px 0 20px;
+}
+
+.rules-modal ol {
+    padding-left: 21px;
+    color: #b8c9cb;
+    font-size: 14px;
+}
+
+.rules-modal li {
+    margin-bottom: 14px;
+    padding-left: 6px;
+    line-height: 1.6;
+}
+
+.rules-modal strong {
+    color: #e2eade;
+    font-weight: 600;
+}
+
+.house-rules {
+    border-top: 1px solid var(--line);
+    padding-top: 17px;
+    font-size: 13px;
+    color: #abc1bb;
+}
+
+.house-rules p {
+    margin-top: 7px;
+    line-height: 1.6;
+}
+
+
