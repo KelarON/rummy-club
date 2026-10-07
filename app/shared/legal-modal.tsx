@@ -2,36 +2,37 @@
 
 import { useEffect } from "react";
 import { X } from "lucide-react";
-import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 
-export function LegalModal({ children }: { children: ReactNode }) {
-  const router = useRouter();
-
+export function LegalModal({
+  children,
+  onClose,
+}: {
+  children: ReactNode;
+  onClose: () => void;
+}) {
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, []);
-
-  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") router.back();
+      if (event.key === "Escape") onClose();
     };
 
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [router]);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [onClose]);
 
   return (
     <div
       className="legal-modal-backdrop"
       role="presentation"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) router.back();
+        if (event.target === event.currentTarget) onClose();
       }}
     >
       <div
@@ -44,7 +45,7 @@ export function LegalModal({ children }: { children: ReactNode }) {
           className="legal-modal-close"
           type="button"
           aria-label="Закрыть"
-          onClick={() => router.back()}
+          onClick={onClose}
         >
           <X size={20} />
         </button>

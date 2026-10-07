@@ -5,7 +5,7 @@ export function LegalPage({ children }: { children: ReactNode }) {
   return (
     <main className="app">
       <article className="legal-page">
-        <Link className="legal-back" href="/">
+        <Link className="legal-back" href="/" prefetch={false}>
           ← Вернуться к игре
         </Link>
         {children}

@@ -8,6 +8,7 @@ import { GameRoom } from "./game/components/game-room";
 import { LobbyHome } from "./lobby/components/lobby-home";
 import { CreateLobbyDialog } from "./lobby/components/create-lobby-dialog";
 import { RulesDialog } from "./shared/rules-dialog";
+import { LegalLinks } from "./shared/legal-links";
 import { useGameRoom } from "./game/hooks/useGameRoom";
 import { useTileDrag } from "./game/hooks/useTileDrag";
 
@@ -56,6 +57,7 @@ export default function Home() {
         <Link
           className="brand"
           href="/"
+          prefetch={false}
           onClick={(e) => {
             if (game.room) {
               e.preventDefault();
@@ -210,10 +212,7 @@ export default function Home() {
       <footer>
         <span>rummy club / перерыв</span>
         <span>Одна хорошая партия — и снова в дело.</span>
-        <span className="footer-links">
-          <Link href="/privacy">Конфиденциальность</Link>
-          <Link href="/terms">Условия</Link>
-        </span>
+        <LegalLinks />
       </footer>
       <RulesDialog open={game.rules} onClose={() => game.setRules(false)} />
     </main>
