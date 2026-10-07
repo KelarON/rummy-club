@@ -61,4 +61,18 @@
     line-height: 1.6;
 }
 
+.house-rules ul {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0;
+}
+
+.house-rules li {
+  margin-bottom: 10px;
+  padding-left: 0;
+}
+
+.house-rules li:last-child {
+  margin-bottom: 0;
+}
 
