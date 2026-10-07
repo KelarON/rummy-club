@@ -42,6 +42,11 @@ export function RoomChat({ code, me, messages, open, onOpen, onState }: Props) {
             });
         }
     }, [open, last]);
+    useEffect(() => {
+        if (!busy && open) {
+            input.current?.focus({ preventScroll: true });
+        }
+    }, [busy, open]);
     const position = read ? messages.findIndex((m) => m.id === read) : -1;
     const unread = messages
         .slice(position + 1)
