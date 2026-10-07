@@ -13,6 +13,7 @@
 /outputs/
 /work/
 /coverage/
+*.tsbuildinfo
 
 # Environment files
 .env

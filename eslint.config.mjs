@@ -12,7 +12,7 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
   ]),
   {
-    files: ["components/ui/**/*.{ts,tsx}", "hooks/use-mobile.ts"],
+    files: ["components/ui/**/*.{ts,tsx}"],
     rules: {
       // Vendored shadcn files are kept intact.
       "@typescript-eslint/no-unused-vars": "off",
