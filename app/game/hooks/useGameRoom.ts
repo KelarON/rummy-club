@@ -28,7 +28,7 @@ export function useGameRoom() {
     [clock, setClock] = useState(0);
   const [botCount, setBotCount] = useState(0),
     [replaceLeavers, setReplaceLeavers] = useState(false),
-    [randomMode, setRandomMode] = useState<RandomMode>("balanced"),
+    [randomMode, setRandomMode] = useState<RandomMode>("classic"),
     [chatOpen, setChatOpen] = useState(false),
     [sandboxOpen, setSandboxOpen] = useState(false);
   const [sortMode, setSortMode] = useState<SortMode>("color"),

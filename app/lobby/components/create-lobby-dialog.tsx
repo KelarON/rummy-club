@@ -98,7 +98,7 @@ export function CreateLobbyDialog(p: Props) {
             </SelectTrigger>
             <SelectContent className="rule-options">
               <SelectItem value="classic">
-                Классическая — текущий случайный вариант
+                Классическая — полностью случайно
               </SelectItem>
               <SelectItem value="balanced">
                 Сбалансированная — меньше дублей
